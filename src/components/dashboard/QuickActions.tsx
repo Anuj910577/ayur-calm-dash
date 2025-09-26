@@ -2,6 +2,7 @@ import { Calendar, MessageSquare, FileText, Leaf } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface QuickAction {
   id: string;
@@ -13,15 +14,14 @@ interface QuickAction {
   action: () => void;
 }
 
-const quickActions: QuickAction[] = [
+const quickActions = [
   {
     id: "reschedule",
     title: "Reschedule",
     subtitle: "Modify session",
     icon: Calendar,
     color: "text-primary",
-    bgColor: "bg-primary/10 hover:bg-primary/20",
-    action: () => console.log("Reschedule clicked")
+    bgColor: "bg-primary/10 hover:bg-primary/20"
   },
   {
     id: "chat", 
@@ -29,8 +29,7 @@ const quickActions: QuickAction[] = [
     subtitle: "Talk to therapist",
     icon: MessageSquare,
     color: "text-health-energy",
-    bgColor: "bg-health-energy/10 hover:bg-health-energy/20", 
-    action: () => console.log("Chat clicked")
+    bgColor: "bg-health-energy/10 hover:bg-health-energy/20"
   },
   {
     id: "log-health",
@@ -38,8 +37,7 @@ const quickActions: QuickAction[] = [
     subtitle: "Daily feedback",
     icon: FileText,
     color: "text-primary",
-    bgColor: "bg-primary/10 hover:bg-primary/20",
-    action: () => console.log("Log health clicked")
+    bgColor: "bg-primary/10 hover:bg-primary/20"
   },
   {
     id: "wellness",
@@ -47,12 +45,33 @@ const quickActions: QuickAction[] = [
     subtitle: "Tips & guidance", 
     icon: Leaf,
     color: "text-health-energy",
-    bgColor: "bg-health-energy/10 hover:bg-health-energy/20",
-    action: () => console.log("Wellness clicked")
+    bgColor: "bg-health-energy/10 hover:bg-health-energy/20"
   }
 ];
 
 export function QuickActions() {
+  const navigate = useNavigate();
+
+  const handleAction = (actionId: string) => {
+    switch (actionId) {
+      case 'reschedule':
+        // In a real app, this would open a modal or navigate to scheduling
+        alert('Reschedule functionality - would open appointment scheduler');
+        break;
+      case 'chat':
+        navigate('/messages');
+        break;
+      case 'log-health':
+        navigate('/feedback');
+        break;
+      case 'wellness':
+        navigate('/wellness');
+        break;
+      default:
+        console.log('Unknown action:', actionId);
+    }
+  };
+
   return (
     <Card className="shadow-soft">
       <CardHeader>
@@ -69,7 +88,7 @@ export function QuickActions() {
               <Button
                 key={action.id}
                 variant="ghost"
-                onClick={action.action}
+                onClick={() => handleAction(action.id)}
                 className={cn(
                   "h-auto p-4 flex flex-col items-center space-y-2 transition-all duration-200",
                   action.bgColor
