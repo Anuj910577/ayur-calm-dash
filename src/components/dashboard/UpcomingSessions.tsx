@@ -1,8 +1,16 @@
-import { Calendar, Clock, User, Plus } from "lucide-react";
+import * as React from "react";
+import { Calendar, Clock, User, Plus, Edit, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSessionsData } from "@/hooks/useSessionsData";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useToast } from "@/hooks/use-toast";
 
 interface Session {
   id: string;
@@ -14,35 +22,7 @@ interface Session {
   type: 'nasya' | 'vamana' | 'basti' | 'abhyanga' | 'shirodhara';
 }
 
-const upcomingSessions: Session[] = [
-  {
-    id: "1",
-    therapy: "Nasya",
-    date: "Sep 2, 2025",
-    time: "15:18",
-    duration: "60min",
-    practitioner: "Dr. Priya Sharma",
-    type: "nasya"
-  },
-  {
-    id: "2", 
-    therapy: "Vamana",
-    date: "Sep 5, 2025",
-    time: "15:27",
-    duration: "60min", 
-    practitioner: "Dr. Meera Patel",
-    type: "vamana"
-  },
-  {
-    id: "3",
-    therapy: "Basti", 
-    date: "Sep 7, 2025",
-    time: "16:39",
-    duration: "60min",
-    practitioner: "Dr. Raj Kumar",
-    type: "basti"
-  }
-];
+
 
 const therapyColors = {
   nasya: "border-l-therapy-nasya bg-therapy-nasya/5",
@@ -53,6 +33,135 @@ const therapyColors = {
 };
 
 export function UpcomingSessions() {
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
+  const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = React.useState(false);
+  const [selectedSessionId, setSelectedSessionId] = React.useState<string | null>(null);
+  const [newSession, setNewSession] = React.useState({
+    therapy: '',
+    date: '',
+    time: '',
+    duration: '60min',
+    practitioner: '',
+    type: 'nasya' as 'nasya' | 'vamana' | 'basti' | 'abhyanga' | 'shirodhara'
+  });
+
+  const { sessions, addSession, updateSession, deleteSession } = useSessionsData();
+  const { toast } = useToast();
+
+  const { addNotification } = useNotifications();
+
+  const handleScheduleSession = () => {
+    if (!newSession.therapy || !newSession.date || !newSession.time || !newSession.practitioner) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    addSession(newSession);
+
+    addNotification({
+      type: 'reminder',
+      title: `Session Scheduled: ${newSession.therapy}`,
+      message: `Your ${newSession.therapy} session with ${newSession.practitioner} is scheduled for ${newSession.date} at ${newSession.time}`,
+      time: 'Just now',
+      read: false,
+      priority: 'medium'
+    });
+
+    setIsScheduleDialogOpen(false);
+    setNewSession({
+      therapy: '',
+      date: '',
+      time: '',
+      duration: '60min',
+      practitioner: '',
+      type: 'nasya'
+    });
+
+    toast({
+      title: "Session scheduled",
+      description: "Your new session has been added to your schedule.",
+    });
+  };
+
+  const handleRescheduleSession = () => {
+    if (!selectedSessionId || !newSession.date || !newSession.time) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in date and time.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    updateSession(selectedSessionId, {
+      date: newSession.date,
+      time: newSession.time
+    });
+
+    setIsRescheduleDialogOpen(false);
+    setSelectedSessionId(null);
+    setNewSession({
+      therapy: '',
+      date: '',
+      time: '',
+      duration: '60min',
+      practitioner: '',
+      type: 'nasya'
+    });
+
+    toast({
+      title: "Session rescheduled",
+      description: "Your session has been updated.",
+    });
+  };
+
+  const handleDeleteSession = (sessionId: string, sessionTitle: string) => {
+    deleteSession(sessionId);
+
+    addNotification({
+      type: 'general',
+      title: `Session Cancelled: ${sessionTitle}`,
+      message: `Your ${sessionTitle} session has been cancelled.`,
+      time: 'Just now',
+      read: false,
+      priority: 'low'
+    });
+
+    toast({
+      title: "Session cancelled",
+      description: "Your session has been removed from your schedule.",
+    });
+  };
+
+  const openRescheduleDialog = (session: Session) => {
+    setSelectedSessionId(session.id);
+    setNewSession({
+      therapy: session.therapy,
+      date: session.date,
+      time: session.time,
+      duration: session.duration,
+      practitioner: session.practitioner,
+      type: session.type
+    });
+    setIsRescheduleDialogOpen(true);
+  };
+
+  const openScheduleDialog = () => {
+    setNewSession({
+      therapy: '',
+      date: '',
+      time: '',
+      duration: '60min',
+      practitioner: '',
+      type: 'nasya'
+    });
+    setIsScheduleDialogOpen(true);
+  };
+
   return (
     <Card className="shadow-soft">
       <CardHeader>
@@ -65,15 +174,91 @@ export function UpcomingSessions() {
             <Button variant="outline" size="sm">
               View All
             </Button>
-            <Button size="sm" className="bg-gradient-primary">
-              <Plus className="w-4 h-4 mr-1" />
-              Schedule
-            </Button>
+            <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-gradient-primary" onClick={openScheduleDialog}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Schedule
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Schedule New Session</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="therapy" className="text-right">
+                      Therapy
+                    </Label>
+                    <Select value={newSession.type} onValueChange={(value: any) => setNewSession(prev => ({ ...prev, type: value, therapy: value.charAt(0).toUpperCase() + value.slice(1) }))}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select therapy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nasya">Nasya</SelectItem>
+                        <SelectItem value="vamana">Vamana</SelectItem>
+                        <SelectItem value="basti">Basti</SelectItem>
+                        <SelectItem value="abhyanga">Abhyanga</SelectItem>
+                        <SelectItem value="shirodhara">Shirodhara</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="date" className="text-right">
+                      Date
+                    </Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={newSession.date}
+                      onChange={(e) => setNewSession(prev => ({ ...prev, date: e.target.value }))}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="time" className="text-right">
+                      Time
+                    </Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={newSession.time}
+                      onChange={(e) => setNewSession(prev => ({ ...prev, time: e.target.value }))}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="practitioner" className="text-right">
+                      Practitioner
+                    </Label>
+                    <Select value={newSession.practitioner} onValueChange={(value) => setNewSession(prev => ({ ...prev, practitioner: value }))}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select practitioner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Dr. Priya Sharma">Dr. Priya Sharma</SelectItem>
+                        <SelectItem value="Dr. Meera Patel">Dr. Meera Patel</SelectItem>
+                        <SelectItem value="Dr. Raj Kumar">Dr. Raj Kumar</SelectItem>
+                        <SelectItem value="Dr. Amit Singh">Dr. Amit Singh</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsScheduleDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleScheduleSession}>
+                    Schedule Session
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {upcomingSessions.map((session) => (
+        {sessions.map((session) => (
           <div
             key={session.id}
             className={cn(
@@ -104,19 +289,74 @@ export function UpcomingSessions() {
                   </div>
                 </div>
               </div>
-              
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Reschedule
-              </Button>
+
+              <div className="flex items-center space-x-2">
+                <Dialog open={isRescheduleDialogOpen} onOpenChange={setIsRescheduleDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => openRescheduleDialog(session)}>
+                      <Edit className="w-4 h-4 mr-1" />
+                      Reschedule
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Reschedule Session</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="reschedule-date" className="text-right">
+                          Date
+                        </Label>
+                        <Input
+                          id="reschedule-date"
+                          type="date"
+                          value={newSession.date}
+                          onChange={(e) => setNewSession(prev => ({ ...prev, date: e.target.value }))}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="reschedule-time" className="text-right">
+                          Time
+                        </Label>
+                        <Input
+                          id="reschedule-time"
+                          type="time"
+                          value={newSession.time}
+                          onChange={(e) => setNewSession(prev => ({ ...prev, time: e.target.value }))}
+                          className="col-span-3"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsRescheduleDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleRescheduleSession}>
+                        Reschedule
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleDeleteSession(session.id, session.therapy)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         ))}
-        
-        {upcomingSessions.length === 0 && (
+
+        {sessions.length === 0 && (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
             <p className="text-muted-foreground">No upcoming sessions scheduled</p>
-            <Button className="mt-3 bg-gradient-primary">
+            <Button className="mt-3 bg-gradient-primary" onClick={openScheduleDialog}>
               <Plus className="w-4 h-4 mr-1" />
               Schedule Your First Session
             </Button>

@@ -1,48 +1,9 @@
-import { Bell, AlertCircle, CheckCircle, Clock, Calendar } from "lucide-react";
+import { Bell, AlertCircle, CheckCircle, Clock, Calendar, Check, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-interface Notification {
-  id: string;
-  type: 'reminder' | 'preparation' | 'followup' | 'general';
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-  priority: 'high' | 'medium' | 'low';
-}
-
-const notifications: Notification[] = [
-  {
-    id: "1",
-    type: "preparation",
-    title: "Pre-Nasya Preparation",
-    message: "Please avoid heavy meals 2 hours before your session tomorrow at 15:18",
-    time: "2 hours ago",
-    read: false,
-    priority: "high"
-  },
-  {
-    id: "2", 
-    type: "reminder",
-    title: "Daily Wellness Check",
-    message: "Don't forget to log your daily symptoms and energy levels",
-    time: "6 hours ago",
-    read: false,
-    priority: "medium"
-  },
-  {
-    id: "3",
-    type: "followup",
-    title: "Post-Vamana Care",
-    message: "Follow light diet recommendations for next 24 hours",
-    time: "1 day ago", 
-    read: true,
-    priority: "medium"
-  }
-];
+import { useNotifications } from "@/hooks/useNotifications";
 
 const typeIcons = {
   reminder: Clock,
@@ -58,7 +19,12 @@ const priorityColors = {
 };
 
 export function NotificationPanel() {
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const { notifications, markAsRead, markAllAsRead, deleteNotification, getUnreadCount } = useNotifications();
+  const unreadCount = getUnreadCount();
+
+  const handleNotificationClick = (notificationId: string) => {
+    markAsRead(notificationId);
+  };
 
   return (
     <Card className="shadow-soft">
@@ -73,17 +39,25 @@ export function NotificationPanel() {
               </Badge>
             )}
           </CardTitle>
-          <Button variant="ghost" size="sm">
-            View All
-          </Button>
+          <div className="flex space-x-2">
+            {unreadCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+                <Check className="w-4 h-4 mr-1" />
+                Mark All Read
+              </Button>
+            )}
+            <Button variant="ghost" size="sm">
+              View All
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         {notifications.length > 0 ? (
           <div className="space-y-3">
             {notifications.slice(0, 3).map((notification) => {
-              const IconComponent = typeIcons[notification.type];
-              
+              const IconComponent = typeIcons[notification.type as keyof typeof typeIcons];
+
               return (
                 <div
                   key={notification.id}
@@ -92,10 +66,11 @@ export function NotificationPanel() {
                     priorityColors[notification.priority],
                     !notification.read && "ring-1 ring-primary/20"
                   )}
+                  onClick={() => handleNotificationClick(notification.id)}
                 >
                   <div className="flex items-start space-x-3">
                     <IconComponent className="w-5 h-5 mt-0.5 text-muted-foreground" />
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className={cn(
@@ -104,20 +79,33 @@ export function NotificationPanel() {
                         )}>
                           {notification.title}
                         </h3>
-                        {!notification.read && (
-                          <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
-                        )}
+                        <div className="flex items-center space-x-1">
+                          {!notification.read && (
+                            <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
-                      
+
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
                         {notification.message}
                       </p>
-                      
+
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">
                           {notification.time}
                         </span>
-                        <Badge 
+                        <Badge
                           variant={notification.priority === 'high' ? 'destructive' : 'secondary'}
                           className="text-xs"
                         >

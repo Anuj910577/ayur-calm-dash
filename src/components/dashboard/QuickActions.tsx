@@ -67,6 +67,10 @@ export function QuickActions() {
       case 'wellness':
         navigate('/wellness');
         break;
+      case 'edit-profile':
+        // Could open a dialog or navigate to profile page
+        alert('Edit profile - would open profile dialog');
+        break;
       default:
         console.log('Unknown action:', actionId);
     }

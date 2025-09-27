@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useSessionsData } from "@/hooks/useSessionsData";
+import * as React from "react";
 
 interface ProgressPhase {
   id: string;
@@ -16,7 +18,7 @@ interface ProgressPhase {
   };
 }
 
-const therapyPhases: ProgressPhase[] = [
+const staticPhases: ProgressPhase[] = [
   {
     id: "preparation",
     name: "Preparation Phase",
@@ -26,7 +28,7 @@ const therapyPhases: ProgressPhase[] = [
     sessions: { completed: 3, total: 3 }
   },
   {
-    id: "main-therapy", 
+    id: "main-therapy",
     name: "Main Therapy Phase",
     description: "Active Panchakarma procedures",
     status: "current",
@@ -35,7 +37,7 @@ const therapyPhases: ProgressPhase[] = [
   },
   {
     id: "recovery",
-    name: "Recovery Phase", 
+    name: "Recovery Phase",
     description: "Post-therapy rehabilitation & lifestyle guidance",
     status: "upcoming",
     progress: 0,
@@ -43,11 +45,37 @@ const therapyPhases: ProgressPhase[] = [
   }
 ];
 
-const overallProgress = 68;
-const nextMilestone = "Complete Basti therapy series";
-const estimatedCompletion = "Sep 15, 2025";
-
 export function TherapyProgress() {
+  const { sessions } = useSessionsData();
+
+  // Calculate dynamic progress based on sessions
+  const totalSessions = sessions.length;
+  const completedSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.date);
+    const today = new Date();
+    return sessionDate < today;
+  }).length;
+
+  const overallProgress = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+  // For now, keep static phases but could make them dynamic later
+  const therapyPhases = staticPhases.map(phase => ({
+    ...phase,
+    sessions: {
+      completed: Math.min(phase.sessions.completed, completedSessions),
+      total: phase.sessions.total
+    },
+    progress: phase.id === 'main-therapy' ? overallProgress : phase.progress
+  }));
+
+  const nextMilestone = completedSessions < totalSessions
+    ? `Complete ${sessions[completedSessions]?.therapy || 'next session'}`
+    : "All sessions completed";
+
+  const estimatedCompletion = sessions.length > 0
+    ? sessions[sessions.length - 1]?.date || "TBD"
+    : "TBD";
+
   return (
     <Card className="shadow-soft">
       <CardHeader>
@@ -64,9 +92,9 @@ export function TherapyProgress() {
             <span className="text-2xl font-bold text-primary">{overallProgress}%</span>
           </div>
           <Progress value={overallProgress} className="h-3" />
-          
+
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Started: Aug 1, 2025</span>
+            <span>Sessions: {completedSessions}/{totalSessions}</span>
             <span>Est. Completion: {estimatedCompletion}</span>
           </div>
         </div>
@@ -74,7 +102,7 @@ export function TherapyProgress() {
         {/* Phase Breakdown */}
         <div className="space-y-4">
           <h3 className="font-medium text-foreground">Treatment Phases</h3>
-          
+
           {therapyPhases.map((phase, index) => (
             <div key={phase.id} className="space-y-3">
               <div className="flex items-start space-x-3">
@@ -92,11 +120,11 @@ export function TherapyProgress() {
                     <span className="text-sm font-bold">{index + 1}</span>
                   )}
                 </div>
-                
+
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <h4 className="font-medium text-foreground">{phase.name}</h4>
-                    <Badge 
+                    <Badge
                       variant={
                         phase.status === 'completed' ? 'default' :
                         phase.status === 'current' ? 'secondary' : 'outline'
@@ -107,11 +135,11 @@ export function TherapyProgress() {
                        phase.status === 'current' ? 'In Progress' : 'Upcoming'}
                     </Badge>
                   </div>
-                  
+
                   <p className="text-sm text-muted-foreground mb-2">
                     {phase.description}
                   </p>
-                  
+
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
@@ -125,7 +153,7 @@ export function TherapyProgress() {
                   </div>
                 </div>
               </div>
-              
+
               {index < therapyPhases.length - 1 && (
                 <div className="ml-4 w-px h-4 bg-border" />
               )}
